@@ -1,270 +1,365 @@
 const crypto = require('crypto');
 
 /////////////////////////////////////////////////
-class Room {
-    constructor(roomName, isOpen, password, maxPlayer, ownerId, playerInfos, customProperties) {
-        this.id = crypto.randomUUID();
-        this.roomName = roomName;
-        this.isOpen = isOpen;
-        this.password = password;
-        this.passwordEnabled = (password === "") ? false : true;
-        this.maxPlayer = maxPlayer;
-        this.ownerId = ownerId;
-        this.playerInfos = playerInfos;
+class Lobby {
+    constructor(version) {
+        this.version = version;
+        this.players = {};
+        this.sockets = {};
+        this.rooms = {};
+    }
+
+    AddPlayer(id, socket, player) {
+        this.players[id] = player;
+        this.sockets[id] = socket;
+    }
+
+    RemovePlayer(id) {
+        if (id in this.players) {
+            delete this.players[id];
+        }
+        if (id in this.sockets) {
+            delete this.sockets[id];
+        }
+    }
+
+    FindPlayer(id) {
+        return this.players[id];
+    }
+
+    AddRoom(room) {
+        this.rooms[room.id] = room;
+        this.UpdateRoomInfoForLobby(room, RoomOpResponse.OnCreated);
+    }
+
+    FindRoom(roomId) {
+        return this.rooms[roomId];
+    }
+
+    RemoveRoom(roomId) {
+        if (roomId in this.rooms) {
+            delete this.rooms[roomId];
+        }
+    }
+
+    UpdateRoomInfoForLobby(room, roomOpResponse) {
+        Object.values(this.sockets).forEach(socket => {
+            if (socket.updateRoomList) {
+                switch (roomOpResponse) {
+                    case RoomOpResponse.OnCreated:
+                        let roomInfo = room.CreateRoomInfo();
+                        SendObject(socket, {
+                            "opResponse": OpResponse.OnRoomInfoUpdated,
+                            "roomOpResponse" : RoomOpResponse.OnCreated,
+                            "roomInfo": roomInfo
+                        });
+                        break;
+                    case RoomOpResponse.OnPlayerJoined:
+                        SendObject(socket, {
+                            "opResponse": OpResponse.OnRoomInfoUpdated,
+                            "roomOpResponse" : RoomOpResponse.OnPlayerJoined,
+                            "playerCount": room.GetPlayerCount()
+                        });
+                        break;
+                    case RoomOpResponse.OnPlayerLeft:
+                            SendObject(socket, {
+                                "opResponse": OpResponse.OnRoomInfoUpdated,
+                                "roomOpResponse" : room.GetPlayerCount() <= 0 ? RoomOpResponse.OnRemoved : RoomOpResponse.OnPlayerLeft,
+                                "playerCount": room.GetPlayerCount()
+                            });
+                        break;
+                }
+            }
+        });
+    }
+}
+
+class Player {
+    constructor(id, nickname, customProperties, socket) {
+        this.id = (id) ? id : crypto.randomUUID();
+        this.nickname = nickname;
+        this.roomId = null;
         this.customProperties = customProperties;
+        
+        this.socket = socket;
+    }
+}
+
+class Room {
+    constructor(creator, name, roomOptions, lobby) {
+        this.id = crypto.randomUUID();
+        this.name = (name) ? name : this.id;
+        this.isPlaying = false;
+        this.isOpen = roomOptions.isOpen;
+        this.password = roomOptions.password;
+        this.havePassword = (this.password) ? true : false;
+        this.maxPlayer = roomOptions.maxPlayer;
+        this.ownerId = creator.id;
+        this.players = { [creator.id]: creator };
+        this.customProperties = roomOptions.customProperties;
+        this.customPropertyKeysForLobby = roomOptions.customPropertyKeysForLobby;
+
+        this.playerSockets = {[creator.id] : creator.socket};
+        this.lobby = lobby;
+    }
+
+    AddPlayer(player) {
+        this.players[player.id] = player;
+        this.playerSockets[player.id] = socket;
+        this.UpdateRoom({"joiner" : player}, RoomOpResponse.OnPlayerJoined);
+    }
+
+    RemovePlayer(player) {
+        delete this.players[player.id] ;
+        delete this.playerSockets[player.id];
+
+        if (this.GetPlayerCount() <= 0){
+        }
+        else{
+
+            this.UpdateRoom({"leaverId" : player.id}, RoomOpResponse.OnPlayerLeft);
+            if (player.id == this.ownerId){
+                let nextOwner = this.GetNextPlayer();
+                this.ownerId = nextOwner.id;
+
+                this.UpdateRoom({"ownerId" : this.ownerId}, RoomOpResponse.OnOwnerChanged);
+            }
+        }
+    }
+
+    GetNextPlayer(){
+        return Object.keys(this.players)[0];
+    }
+
+    UpdateRoom(info, roomOpResponse) {
+        Object.values(this.playerSockets).forEach(socket =>{
+            switch(roomOpResponse){
+                case RoomOpResponse.OnPlayerJoined:
+                    SendObject(socket, {
+                        "roomOpResponse" : RoomOpResponse.OnPlayerJoined,
+                        "joiner" : info.joiner
+                    });
+                case RoomOpResponse.OnPlayerLeft:
+                    SendObject(socket, {
+                        "roomOpResponse" : RoomOpResponse.OnPlayerLeft,
+                        "leaverId" : info.leaverId
+                    });
+                break;
+                case RoomOpResponse.OnOwnerChanged:
+                    SendObject(socket, {
+                        "roomOpResponse" : RoomOpResponse.OnOwnerChanged,
+                        "ownerId" : info.ownerId
+                    });
+                break;
+            }  
+        })
     }
 
     GetPlayerCount() {
         return Object.keys(this.players).length;
     }
 
-    CreateRoomInfo(){
-        return new RoomInfo(this.id, this.roomName, this.isOpen, this.passwordEnabled,
-            this.GetPlayerCount(), this.maxPlayer, this.customProperties);
+    CreateRoomInfo() {
+
+        let customPropertiesForLobby = {};
+        this.customPropertyKeysForLobby.forEach(key => {
+            if (key in this.customProperties) {
+                customPropertiesForLobby[key] = this.customProperties[key];
+            }
+        });
+
+        return ({
+            "id": this.id,
+            "name": this.name,
+            "isPlaying": this.isPlaying,
+            "isOpen": this.isOpen,
+            "havePassword": this.havePassword,
+            "maxPlayer": this.maxPlayer,
+            "ownerId": this.ownerId,
+            "playersCount": this.GetPlayerCount(),
+            "customPropertiesForLobby": customPropertiesForLobby
+        });
     }
 }
 
-class RoomInfo {
-    constructor(id, roomName, isOpen, passwordEnabled, playerCount,
-        maxPlayer, customPropertiesForLobby) {
-        this.id = id;
-        this.roomName = roomName;
-        this.isOpen = isOpen;
-        this.passwordEnabled = passwordEnabled;
-        this.playerCount = playerCount;
-        this.maxPlayer = maxPlayer;
-        this.customPropertiesForLobby = customPropertiesForLobby;
-    }
-}
-
-class Player {
-    constructor(id, nickname, roomId, customProperties, webSocket) {
-        this.id = (!id) ? crypto.randomUUID() : id;
-        this.nickname = nickname;
-        this.roomId = roomId;
-        this.customProperties = customProperties;
-        this.webSocket = webSocket;
-    }
-
-    CreatePlayerInfo() {
-        return new PlayerInfo(this.id, this.nickname, this.customProperties);
-    }
-}
-
-class PlayerInfo {
-    constructor(id, nickname, customProperties) {
-        this.id = id;
-        this.nickname = nickname;
-        this.customProperties = customProperties;
-    }
-}
-
-class RoomOptions {
-    constructor(roomName, password, maxPlayer, customProperties) {
-        this.roomName = roomName;
-        this.password = password;
-        this.maxPlayer = maxPlayer;
-        this.customProperties = customProperties;
-    }
-}
-
-const Op = {
-    ConnectToMaster = 0,
-    OnConnectedToMaster = 1,
-
-    CreateRoom = 2,
-    OnCreatedRoom = 3,
-    OnCreateRoomFailed = 4,
-
+const OpRequest = {
+    ConnectToMaster: 1,
 
 }
 
-const RoomOp = {
-    OnPlayerJoined,
+const OpResponse = {
+    OnConnectedToMaster: 1,
+
+    OnCreatedRoom: 2,
+    OnCreatedRoomFailed: 3,
+
+    OnJoinedRoom : 4,
+    OnJoinRoomFailed : 5,
+
+    OnLeftRoom : 6,
+    OnLeaveRoomFailed : 7,
+
+    OnRoomInfoUpdated: 10
 }
 
-const FailureCause = {
-    AlreadyInRoom = 4,
-    RoomIsFull = 5,
-    IncorrectPassword = 6,
+const RoomOpResponse = {
+    OnCreated: 1,
+    OnNameChanged: 2,
+    OnPlayingChanged: 3,
+    OnOpenChanged: 4,
+    OnMaxPlayerChanged: 5,
+    OnPlayerJoined: 6,
+    OnPlayerLeft: 7,
+    OnOwnerChanged: 8,
+    OnCustomPropertiesChanged: 9,
+    OnRemoved: 10
+}
+
+const RoomOpRequest = {
+    OnCreated: 1,
+    OnNameChanged: 2,
+    OnPlayingChanged: 3,
+    OnOpenChanged: 4,
+    OnMaxPlayerChanged: 5,
+    OnPlayerJoined: 6,
+    OnPlayerLeft: 7,
+    OnOwnerChanged: 8,
+    OnCustomPropertiesChanged: 9,
+    OnRemoved: 10
 }
 
 /////////////////////////////////////////////////
-//#region Connect to master server
-function ConnectToMaster(webSocket, jObject) {
+function ConnectToMaster(socket, jObject) {
 
-    let player = CreatePlayer(
-        jObject.id,
-        jObject.nickname,
-        "",
-        jObject.customProperties,
-        webSocket);
-    let playerInfo = player.CreatePlayerInfo();
+    let lobby = CreateOrFindLobby(jObject.version);
+    let player = CreatePlayer(socket, jObject.version, jObject.id, jObject.nickname, jObject.customProperties);
 
-    SendMessage(webSocket, {
-        "op": OnConnectedToMaster,
-        "playerInfo": playerInfo
+    lobby.AddPlayer(player.id, socket, player);
+
+    SendObject(socket, {
+        "opResponse": OpResponse.OnConnectedToMaster,
+        "player": player
     });
 }
 
-function CreatePlayer(id, nickname, roomId, customProperties, webSocket) {
+function CreateOrFindLobby(version) {
 
-    let player = new Player(id, nickname, roomId, customProperties, webSocket);
+    if (version in lobbies) {
+        return lobbies[version];
+    }
 
-    webSocket.id = id;
+    return new Lobby(version);
+}
 
-    players[id] = player;
-    playersNotInRoom[id] = player;
+function CreatePlayer(socket, version, id, nickname, customProperties) {
+
+    let player = new Player(id, nickname, customProperties, socket);
+
+    socket.id = id;
+    socket.version = version;
+    socket.player = player;
+    socket.updateRoomList = true;
 
     return player;
 }
-//#endregion
 
-//#region Create Room
-function CreateRoom(webSocket, jObject) {
 
-    let owner = players[jObject.creatorId];
-    if (!owner) {
-        //Error
-        return;
-    }
+/////////////////////////////////////////////////
+function CreateRoom(socket, jObject) {
+    let lobby = lobbies[jObject.version];
+    let player = lobby.FindPlayer(jObject.creatorId);
 
-    let roomOptions = jObject.roomOptions;
     let room = new Room(
-        roomOptions.roomName,
-        roomOptions.isOpen,
-        roomOptions.password,
-        roomOptions.maxPlayer,
-        owner.id,
-        { [owner.id]: owner.CreatePlayerInfo() },
-        roomOptions.customProperties
+        player,
+        jObject.name,
+        jObject.roomOptions,
+        lobby
     );
 
-    rooms[room.id] = room;
-    owner.roomId = room.id;
-    delete playersNotInRoom[owner.id];
+    lobby.AddRoom(room);
+    player.roomId = room.id;
+    //socket.updateRoomList = false;
 
-    OnCreatedRoom(webSocket, room);
-}
-
-function OnCreatedRoom(webSocket, room) {
-
-    SendMessage(webSocket, {
-        "op": OnCreatedRoom,
+    SendObject(socket, {
+        "opResponse": OpResponse.OnCreatedRoom,
         "room": room
-    })
-
-    let roomInfo = room.CreateRoomInfo();
-    Object.values(playersNotInRoom).forEach(x => {
-        UpdateRoomInfoForLobby(x.webSocket, roomInfo, RoomOp.OnPlayerJoined);
     });
 }
 
-//#endregion
+function JoinRoom(socket, jObject) {
+    let lobby = lobbies[jObject.version];
+    let room = lobby.FindRoom(jObject.roomId);
 
-//#region Join Room
-function JoinRoom(webSocket, jObject) {
+    if (room) {
+        let canJoinRoom, failureCause = CanJoinRoom(room, jObject);
+        if (canJoinRoom) {
+            let player = lobby.FindPlayer(jObject.joinerId);
+            player.roomId = room.id;
 
-    let joiner = players[jObject.joinerId];
-    let room = rooms[jObject.roomId];
+            room.AddPlayer(player);
+            lobby.UpdateRoomInfoForLobby(room, RoomOpResponse.OnPlayerJoined);
 
-    if (!joiner) {
-        //Error
-        return;
-    }
-
-    if (!room) {
-        //ERROR
-        return;
-    }
-
-    let canJoinRoom, failureCause = CanJoinRoom(joiner, room, jObject.password);
-    if (canJoinRoom) {
-
-        room.playerInfos[joiner.id] = joiner;
-        joiner.roomId = room.id;
-        delete playersNotInRoom[joiner.id];
-
-        OnJoinedRoom(webSocket, room);
-    }
-    else {
-        OnJoinRoomFailed(webSocket, failureCause);
-    }
-}
-
-function OnJoinedRoom(webSocket, room){
-
-    SendMessage(webSocket, {
-        "op" : Op.OnJoinedRoom,
-        "room" : room
-    });
-
-    let players = playersInRoom[room.id];
-    players.forEach(x => {
-        UpdateRoom(x.webSocket, room, RoomOp.OnPlayerJoined);
-    });
-
-    let roomInfo = room.CreateRoomInfo();
-    Object.values(playersNotInRoom).forEach(x => {
-        UpdateRoomInfoForLobby(x.webSocket, roomInfo, RoomOp.OnPlayerJoined);
-    });
-}
-
-function OnJoinRoomFailed(webSocket, failureCause){
-    switch (failureCause) {
-        case FailureCause.IncorrectPassword:
-            break;
-        case FailureCause.AlreadyInRoom:
-            break;
-        case FailureCause.RoomIsFull:
-            break;
-    }
-}
-
-function CanJoinRoom(joiner, room, password) {
-
-    if (joiner.roomId) {
-        return false, FailureCause.AlreadyInRoom;
-    }
-
-    if (room.GetPlayerCount() >= room.maxPlayer) {
-        return false, FailureCause.RoomIsFull;
-    }
-
-    if (room.passwordEnabled) {
-        if (room.password == password) {
-            return true, null;
+            SendObject(socket, {
+                "opResponse" : OpResponse.OnJoinedRoom,
+                "room" : room
+            });
         }
         else {
-            return false, FailureCause.IncorrectPassword;
+
         }
     }
+    else {
 
-    return true, null;
+    }
 }
 
-//#endregion
-
-//#region Update rooms
-function UpdateRoom(webSocket, room, roomOp) {
-
-}
-
-function UpdateRoomInfoForLobby(webSocket, roomInfo, roomOp) {
+function CanJoinRoom(room, jObject) {
 
 }
 
-function GetRoomInfoList() {
+/////////////////////////////////////////////////
+function LeaveRoom(socket, jObject){
+    let lobby = lobbies[socket.version];
+    let room = lobby.FindRoom(jObject.roomId);
+    let player = room.FindPlayer(socket.id);
+
+    if (room){
+        room.RemovePlayer(player);
+        lobby.UpdateRoomInfoForLobby(room, RoomOpResponse.OnPlayerLeft);
+
+        player.roomId = null;
+        SendObject({
+            "opResponse" : OpResponse.OnLeftRoom
+        });
+    }
+    else{
+
+    }
+}
+
+/////////////////////////////////////////////////
+function GetRoomList(socket, jObject){
 
 }
 
-//#endregion
+/////////////////////////////////////////////////
+function SetRoomCustomProperties(socket, jObject){
+
+}
 
 
-//#region Disconnect
+/////////////////////////////////////////////////
+function ChangeRoomSettings(){
+
+}
 
 
-//#endregion
+
+/////////////////////////////////////////////////
+function ChangeNickname(){
+
+}
+
 
 
 /////////////////////////////////////////////////
@@ -272,31 +367,34 @@ var port = 3333;
 var wsServer = require('ws').Server;
 var wss = new wsServer({ port: port });
 
-var players = {};
-var playersInRoom = {};
-var playersNotInRoom = {};
-var rooms = {};
+var lobbies = {};
 
 console.log('Server opened on port %d.', port);
 
-wss.on('connection', function connection(webSocket) {
+wss.on('connection', function connection(socket) {
     console.log("Client connected");
 
-    ws.on('message', (message) => {
+    socket.on('message', (message) => {
         let jObject = JSON.parse(message);
-        switch (jObject.Op = Op.ConnectToMaster) {
-            case Op.ConnectToMaster:
-                ConnectToMaster(webSocket, jObject);
-                break;
-        }
 
     });
 
-    ws.on('close', () => {
+    socket.on('close', () => {
         //OnClientDisconnected(ws);
     });
 });
 
-function SendMessage(ws, obj) {
-    ws.send(JSON.stringify(obj));
+
+///////////////////////////////////////////////
+function SendObject(socket, obj, replacer = null) {
+    socket.send(JSON.stringify(obj, JSONReplacer));
+}
+
+function JSONReplacer(key,value)
+{
+    if (key=="playerSockets") return undefined;
+    else if (key=="socket") return undefined;
+    else if (key=="password") return undefined;
+    else if (key=="lobby") return undefined;
+    else return value;
 }
