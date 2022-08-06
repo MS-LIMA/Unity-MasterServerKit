@@ -57,8 +57,7 @@ class Lobby {
         room.SetCallbacks(
             this.OnPlayerJoinedRoom,
             this.OnPlayerLeftRoom,
-            this.OnRoomOptionsChanged,
-            this.OnCustomPropertiesUpdated
+            this.OnRoomOptionsUpdated
         );
 
         this.UpdateRoomInfoInLobby(room, OpResponseRoom.OnCreated);
@@ -96,51 +95,66 @@ class Lobby {
         }
     }
 
-    OnRoomOptionsChanged(room, jObject) {
-
+    OnRoomOptionsUpdated(room, jObject) {
+        this.UpdateRoomInfoInLobby(room, jObject.opResponseRoom, jObject);
     }
 
-    OnCustomPropertiesUpdated(room, jObject) {
-
-    }
-
-    UpdateRoomInfoInLobby(room, opResponseRoom) {
+    UpdateRoomInfoInLobby(room, opResponseRoom, _jObject) {
 
         let jObject = {
-            "opResponseRoom" : opResponseRoom,
-            "roomInfo" : {
-                "id" : room.id
+            "opResponseRoom": opResponseRoom,
+            "roomInfo": {
+                "id": room.id
             }
         };
 
-        switch(opResponseRoom){
+        switch (opResponseRoom) {
             case OpResponseRoom.OnCreated:
                 let customProperties = {};
                 room.customPropertyKeysForLobby.forEach(key => {
                     customProperties[key] = room.customProperties[key];
                 });
-
                 jObject.roomInfo["name"] = room.name;
                 jObject.roomInfo["isPlaying"] = room.isPlaying;
                 jObject.roomInfo["isOpen"] = room.isOpen;
                 jObject.roomInfo["hasPassword"] = room.hasPassword;
                 jObject.roomInfo["playerCount"] = room.GetPlayerCount();
                 jObject.roomInfo["maxPlayer"] = room.maxPlayer;
-                jObject.roomInfo["customProperties"] =customProperties;
-
-            break;
+                jObject.roomInfo["customProperties"] = customProperties;
+                break;
             case OpResponseRoom.OnRemoved:
-            break;
+                break;
             case OpResponseRoom.OnPlayerJoined:
-                case OpResponseRoom.OnPlayerLeft:
+            case OpResponseRoom.OnPlayerLeft:
                 jObject.roomInfo["playerCount"] = room.GetPlayerCount();
-            break;
+                break;
+            case OpResponseRoom.OnRoomInfoUpdated:
+                jObject.roomInfo["name"] = room.name;
+                break;
+            case OpResponseRoom.OnRoomOpenChanged:
+                jObject.roomInfo["isOpen"] = room.isOpen;
+                break;
+            case OpResponseRoom.OnPasswordChanged:
+                jObject.roomInfo["hasPassword"] = room.hasPassword;
+                break;
+            case OpResponseRoom.OnMaxPlayerChanged:
+                jObject.roomInfo["maxPlayer"] = room.maxPlayer;
+                break;
+            case OpResponseRoom.OnCustomPropertiesUpdated:
+                let customProperties = {};
+                let changedPropertyKeys = Object.keys(_jObject.customProperties);
+                room.customPropertyKeysForLobby.forEach(key => {
+                    if (key in changedPropertyKeys) {
+                        customProperties[key] = room.customProperties[key];
+                    }
+                });
+                break;
         }
 
         this.SendObjectToPlayersNotInRoom(jObject);
     }
 
-    SendObjectToPlayersNotInRoom(jObject){
+    SendObjectToPlayersNotInRoom(jObject) {
         Object.values(this.socketsNotInRoom).forEach(socket => {
             SendObject(socket, jObject);
         });
@@ -148,15 +162,15 @@ class Lobby {
     //#endregion
 
     //#region Lobby
-    GetPlayerCount(){
+    GetPlayerCount() {
 
     }
 
-    GetPlayerCountOnlyInLobby(){
+    GetPlayerCountOnlyInLobby() {
 
     }
 
-    GetRoomList(){
+    GetRoomList() {
 
     }
 
@@ -195,11 +209,10 @@ class Room {
         this.serverInstanceSettings = serverInstanceSettings;
     }
 
-    SetCallbacks(onPlayerJoined, onPlayerLeft, onRoomOptionsChanged, onCustomPropertiesUpdated) {
+    SetCallbacks(onPlayerJoined, onPlayerLeft, onRoomOptionsUpdated) {
         this.onPlayerJoined = onPlayerJoined;
         this.onPlayerLeft = onPlayerLeft;
-        this.onRoomOptionsChanged = onRoomOptionsChanged;
-        this.onCustomPropertiesUpdated = onCustomPropertiesUpdated;
+        this.onRoomOptionsUpdated = onRoomOptionsUpdated;
     }
 
     //#region Player
@@ -208,21 +221,31 @@ class Room {
         this.sockets[player.id] = socket;
 
         this.onPlayerJoined(this, player);
-        this.UpdateRoomInfo();
+        this.UpdateRoomInfo({
+            "opResponseRoom": OpResponseRoom.OnPlayerJoined,
+            "player": player
+        });
     }
 
-    RemovePlayer(player) {
+    RemovePlayer(player, disconnectionCause) {
         delete this.players[player.id];
 
         this.onPlayerLeft(this, player);
-        this.UpdateRoomInfo();
+        this.UpdateRoomInfo({
+            "opResponseRoom": OpResponseRoom.OnPlayerLeft,
+            "playerId": player.id,
+            "disconnectionCause": disconnectionCause
+        });
 
-        if (this.GetPlayerCount() > 0){
-            if (player.id == this.ownerId){
+        if (this.GetPlayerCount() > 0) {
+            if (player.id == this.ownerId) {
                 let nextPlayer = Object.values(this.players)[0];
                 this.ownerId = nextPlayer.id;
 
-                this.UpdateRoomInfo();
+                this.UpdateRoomInfo({
+                    "opResponseRoom": OpResponseRoom.OnOwnerChanged,
+                    "ownerId": this.ownerId
+                });
             }
         }
     }
@@ -234,9 +257,63 @@ class Room {
     //#endregion
 
     //#region Room
-    UpdateRoomInfo() {
-
+    UpdateRoomInfo(jObject) {
+        Object.values(this.sockets).forEach(socket => {
+            SendObject(socket, jObject);
+        });
     }
+
+    OnRoomOpRequested(opRequestRoom, jObject) {
+        let _jObject = {};
+
+        switch (opRequestRoom) {
+            case OpRequestRoom.UpdateRoomName:
+                this.roomName = jObject.roomName;
+                _jObject["opResponseRoom"] = OpResponseRoom.OnRoomNameUpdated;
+                _jObject["roomName"] = jObject.roomName;
+                break;
+            case OpRequestRoom.ChangeOpen:
+                this.isOpen = jObject.isOpen;
+                _jObject["opResponseRoom"] = OpResponseRoom.OnRoomOpenChanged;
+                _jObject["isOpen"] = this.isOpen;
+                break;
+            case OpRequestRoom.ChangePassword:
+                let password = jObject.password;
+                this.password = password ? password : null;
+                this.hasPassword = password ? true : false;
+                _jObject["opResponseRoom"] = OpResponseRoom.OnPasswordChanged;
+                _jObject["hasPassword"] = this.hasPassword;
+                break;
+            case OpRequestRoom.ChangeMaxPlayer:
+                this.maxPlayer = jObject.maxPlayer;
+                _jObject["opResponseRoom"] = OpResponseRoom.OnMaxPlayerChanged;
+                _jObject["maxPlayer"] = this.maxPlayer;
+                break;
+            case OpRequestRoom.ChangeOwner:
+                if (jObject.ownerId in Object.keys(this.players)) {
+                    this.ownerId = jObject.ownerId;
+                    _jObject["opResponseRoom"] = OpResponseRoom.OnOwnerChanged;
+                    _jObject["ownerId"] = this.ownerId;
+                }
+                break;
+            case OpRequestRoom.KickPlayer:
+                if (jObject.playerId in Object.keys(this.players)) {
+                    this.RemovePlayer(this.players[jObject.playerId], DisconnectionCause.PlayerKicked);
+                }
+                break;
+            case OpRequestRoom.UpdateCustomProperies:
+                Object.keys(jObject.customProperties).forEach(key => {
+                    this.customProperties[key] = jObject.customProperties[key];
+                });
+                _jObject["opResponseRoom"] = OpResponseRoom.OnCustomPropertiesUpdated;
+                _jObject["customProperties"] = jObject.customProperties;
+                break;
+        }
+
+        this.onRoomOptionsUpdated(this, _jObject);
+        this.UpdateRoomInfo(_jObject);
+    }
+
     //#endregion
 
     //#region Server Instance
@@ -308,9 +385,18 @@ const OpResponse = {
 }
 
 const OpRequestRoom = {
-    ChangeRoomName: 1,
-    UpdateGamePlaying: 2,
+    UpdateRoomName: 1,
+    ChangeOpen: 2,
+    ChangePassword: 3,
+    ChangeMaxPlayer: 4,
 
+    KickPlayer: 5,
+    ChangeOwner: 6,
+
+    UpdateCustomProperies: 7,
+
+    StartGame: 8,
+    StopGame: 9
 }
 
 const OpResponseRoom = {
@@ -319,15 +405,27 @@ const OpResponseRoom = {
     OnPlayerLeft: 3,
     OnOwnerChanged: 4,
 
-    OnRemoved: 15,
+    OnRoomNameUpdated: 5,
+    OnRoomOpenChanged: 6,
+    OnPasswordChanged: 7,
+    OnMaxPlayerChanged: 8,
+
+    OnCustomPropertiesUpdated: 9,
+
+    OnGameStarted: 10,
+    OnGameStopped: 11,
+
+    OnRemoved: 12
 }
 
 const FailureCause = {
-
+    RoomIsFull: 1,
+    IncorrectPassword: 2,
 }
 
 const DisconnectionCause = {
-
+    LeaveRoom: 1,
+    PlayerKicked: 2,
 }
 
 ///////////////////////////////////////////////////
@@ -349,7 +447,7 @@ wss.on('connection', function connection(socket) {
             OnLobbyMessage(jObject.OpRequest, socket, jObject);
         }
         else if (jObject.hasOwnProperty("opRequestRoom")) {
-
+            OnRoomMessage(jObject.opRequestRoom, socket, jObject);
         }
     });
 
@@ -376,6 +474,17 @@ function OnLobbyMessage(opRequest, socket, jObject) {
             break;
     }
 }
+
+function OnRoomMessage(opRequestRoom, socket, jObject) {
+    let lobby = lobbies[jObject.version];
+    let room = lobby.FindRoom(jObject.roomId);
+
+    if (room) {
+        room.OnRoomOpRequested(opRequestRoom, jObject);
+    }
+}
+
+//////////////////////////////////////////////////
 
 //#region Connect To Master
 function ConnectToMaster(socket, jObject) {
@@ -436,6 +545,8 @@ function JoinRoom(socket, jObject, isRandom) {
     let lobby = lobbies[jObject.version];
 
     if (isRandom) {
+        let roomFound = false;
+
         //let room = lobby.FindRoom(jObject.roomId);
 
     }
@@ -461,7 +572,20 @@ function JoinRoom(socket, jObject, isRandom) {
 }
 
 function CanJoinRoom(room, jObject) {
-
+    if (!room.isOpen) {
+        return false;
+    }
+    if (room.GetPlayerCount() >= maxPlayer) {
+        return false, FailureCause.RoomIsFull;
+    }
+    if (room.hasPassword) {
+        if (room.password == jObject.password) {
+            return true, null;
+        }
+        else {
+            return false, FailureCause.IncorrectPassword;
+        }
+    }
 }
 
 function LeaveRoom(socket, jObject) {
@@ -470,7 +594,7 @@ function LeaveRoom(socket, jObject) {
     let player = room.FindPlayer(jObject.leaverId);
 
     if (room) {
-        room.RemovePlayer(player);
+        room.RemovePlayer(player, DisconnectionCause.LeaveRoom);
         player.roomId = null;
 
         SendObject({
@@ -480,6 +604,4 @@ function LeaveRoom(socket, jObject) {
     else {
     }
 }
-
-
 //#endregion
