@@ -5,10 +5,12 @@ const OpRequest = {
     JoinRoom: 3,
     JoinRandomRoom: 4,
     LeaveRoom: 5,
-    UpdateRoomList: 6,
 
-    ChangeNickname: 7,
-    UpdateCustomProperies: 8,
+    GetRoomInfos: 6,
+    GetPlayersCount : 7,
+
+    ChangeNickname: 8,
+    UpdateCustomProperies: 9,
 
     Disconnect: 235
 }
@@ -29,47 +31,54 @@ const OpResponse = {
     OnLeaveRoomFailed: 9,
 
     OnRoomInfoUpdated: 10,
-    OnRoomListUpdated: 11,
+    OnRoomInfosGet : 11,
+    OnPlayersCountGet : 12,
 
-
-    OnDisconnectedToMaster : 15
+    OnDisconnectedToMaster: 15
 }
 
 const OpRequestRoom = {
-    UpdateRoomName: 1,
-    ChangeOpen: 2,
-    ChangePassword: 3,
-    ChangeMaxPlayer: 4,
+    SetRoomName: 1,
+    SetPassword: 2,
+    SetMaxPlayers: 3,
+    SetMaster: 4,
+    SetCustomProperties: 5,
 
-    KickPlayer: 5,
-    ChangeOwner: 6,
+    KickPlayer : 6,
+    SendChatMessage : 7,
 
-    UpdateCustomProperies: 7,
+    StartSession: 10,
+    StopSession: 11
 
-    StartGame: 8,
-    StopGame: 9
 }
 
 const OpResponseRoom = {
-    OnCreated,
-    OnRemoved,
-    OnPlayerJoined,
-    OnPlayerLeft,
-    OnOwnerChanged,
-    OnRoomInfoUpdated,
-    
+    OnCreated : 1,
+    OnRemoved : 2,
+
+    OnPlayerJoined : 3,
+    OnPlayerLeft : 4,
+
+    OnRoomNameSet : 5,
+    OnPasswordSet : 6,
+    OnMasterChanged : 7,
+    OnMaxPlayersSet : 8,
+    OnCustomPropertiesSet : 9,
+
+    OnChatMessage : 10,
+
 }
 
 const FailureCause = {
     RoomIsFull: 1,
     IncorrectPassword: 2,
-    RoomIdNotFound : 3,
-    NoRoomToJoin : 4,
+    RoomIdNotFound: 3,
+    NoRoomToJoin: 4,
 }
 
 const DisconnectionCause = {
     LeftRoom: 1,
-    PlayerKicked: 2,
-    Error : 3,
-    LeftMasterServer : 4,
+    KickedFromRoom: 2,
+    Error: 3,
+    LeftMasterServer: 4,
 }

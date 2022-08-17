@@ -5,6 +5,7 @@ const Utility = require("./Utility");
 
 class Lobby {
     constructor(version, serverIp = "127.0.0.1", portMin = 24565, portMax = 25565) {
+        // Lobby infos
         this.version = version;
 
         this.rooms = {};
@@ -12,9 +13,13 @@ class Lobby {
         this.players = {};
         this.playerCount = 0;
 
+        // Server infos
         this.serverIp = serverIp;
-        this.portMin = portMin;
-        this.portMax = portMax;
+        this.ports = [];
+        
+        for(let i = portMin; i <= portMax ;i++){
+            this.ports.push(i);
+        }
     }
 
     // Player control
@@ -39,25 +44,15 @@ class Lobby {
         let room = new Room(
             creator,
             roomName,
-            roomOptions
+            roomOptions,
+            this.serverIp,
+            this.ports.pop()
         );
 
         this.rooms[room.id] = room;
         this.UpdateRoomInfo(OpResponseRoom.OnCreated, room);
 
         return room;
-    }
-
-    OnRoomPlayerCountChanged(room) {
-
-    }
-
-    OnRoomRemoved(room) {
-
-    }
-
-    OnRoomOptionsChanged(room, updatedInfo) {
-
     }
     //#endregion
 
@@ -109,11 +104,11 @@ class Lobby {
     }
 
     CanJoinRoom(room, password) {
-        if (room.playerCount >= room.maxPlayer) {
+        if (room.playerCount >= room.maxPlayers) {
             return false, FailureCause.RoomIsFull;
         }
 
-        if (room.IsLocked()) {
+        if (room.isLocked) {
             if (room.password == password) {
                 return true, null;
             }
@@ -126,6 +121,11 @@ class Lobby {
     //#endregion
 
     //#region Leave room
+    RemoveRoom(room){
+        delete this.rooms[roomId];
+        this.ports.push(room.port);
+    }
+
     LeaveRoom(leaverId, roomId, disconnectionCause) {
         let room = this.rooms[roomId];
         if (room) {
@@ -137,7 +137,7 @@ class Lobby {
                     this.UpdateRoomInfo(OpResponseRoom.OnPlayerLeft, room);
                 }
                 else {
-                    delete this.room[roomId];
+                    this.RemoveRoom(room);
                     this.UpdateRoomInfo(OpResponseRoom.OnRemoved, room);
                 }
             }
@@ -156,26 +156,30 @@ class Lobby {
     }
     //#endregion
 
-    OnRoomOpRequested(opRequestRoom, requestedInfo){
-
+    OnRoomOpRequested(opRequestRoom, requestedInfo) {
+        let roomId = requestedInfo.roomId;
+        let room = this.rooms[roomId];
+        if (room) {
+            room.OnRoomOpRequested(opRequestRoom, requestedInfo);
+        }
     }
-    
+
     // Lobby control.................................................
-    UpdateRoomInfo(opResponseRoom, room) {
+    UpdateRoomInfo(opResponseRoom, room, updatedInfo = null) {
         let jObject = {
             "opResposne": OpResponse.OnRoomInfoUpdated,
             "opResponseRoom": opResponseRoom,
             "roomInfo": {
-                "roomId": room.id
+                "id": room.id
             }
         };
 
         switch (opResponseRoom) {
             case OpResponseRoom.OnCreated:
-                jObject.roomInfo["roomName"] = room.name;
-                jObject.roomInfo["playerCount"] = room.playerCount;
-                jObject.roomInfo["maxPlayer"] = room.maxPlayer;
-                jObject.roomInfo["isLocked"] = room.IsLocked();
+                jObject.roomInfo["name"] = room.name;
+                jObject.roomInfo["playersCount"] = room.playerCount;
+                jObject.roomInfo["maxPlayers"] = room.maxPlayers;
+                jObject.roomInfo["isLocked"] = room.isLocked;
                 jObject.roomInfo["isSessionStarted"] = room.isSessionStarted;
                 let customProperties = {};
                 if (room.customPropertyKeysForLobby.length > 0) {
@@ -187,9 +191,28 @@ class Lobby {
                 break;
             case OpResponseRoom.OnPlayerJoined:
             case OpResponseRoom.OnPlayerLeft:
-                jObject.roomInfo["playerCount"] = room.playerCount;
+                jObject.roomInfo["playersCount"] = room.playerCount;
                 break;
             case OpResponseRoom.OnRemoved:
+                break;
+            case OpResponseRoom.OnRoomNameSet:
+                jObject.roomInfo["roomName"] = room.name;
+                break;
+            case OpResponseRoom.OnPasswordSet:
+                jObject.roomInfo["isLocked"] = room.isLocked;
+                break;
+            case OpResponseRoom.OnMaxPlayersSet:
+                jObject.roomInfo["maxPlayers"] = room.maxPlayers;
+                break;
+            case OpResponseRoom.OnCustomPropertiesSet:
+                let keys = Object.keys(updatedInfo);
+                let customProperties = {};
+                keys.forEach(key => {
+                    if (key in room.customPropertyKeysForLobby) {
+                        customProperties[key] = updatedInfo[key];
+                    }
+                });
+                jObject.roomInfo["customProperties"] = customProperties;
                 break;
         }
 

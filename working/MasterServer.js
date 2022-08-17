@@ -21,7 +21,7 @@ wss.on('connection', function connection(socket) {
             OnLobbyMessage(jObject.OpRequest, socket, jObject);
         }
         else if (jObject.hasOwnProperty("opRequestRoom")) {
-            OnRoomMessage(jObject.opRequestRoom, socket, jObject);
+            OnRoomMessage(socket, jObject);
         }
     });
 
@@ -51,13 +51,19 @@ function OnLobbyMessage(opRequest, socket, jObject) {
         case OpRequest.Disconnect:
             OnDisconnectRequested(socket, jObject);
             break;
+        case OpRequest.GetRoomInfos:
+            OnGetRoomInfosRequested(socket);
+            break;
+        case OpRequest.GetPlayersCount:
+            OnGetPlayersCountRequested(socket);
+            break;
     }
 }
 
-function OnRoomMessage(opRequestRoom, socket, jObject){
+function OnRoomMessage(socket, jObject){
     let lobby = FindLobby(socket.version);
     if (lobby){
-        lobby.OnRoomOpRequested(opRequestRoom, jObject.requestedInfo);
+        lobby.OnRoomOpRequested(jObject.opRequestRoom, jObject.requestInfo);
     }
 }
 
@@ -159,11 +165,53 @@ function OnLeaveRoomRequested(socket, jObject) {
         lobby.LeaveRoom(jObject.leaverId, jObject.roomId, DisconnectionCause.LeftRoom);
         SendJsonObjectToSocket(socket, {
             "opResponse": OpResponse.OnLeftRoom,
+            "disconnectionCause" : DisconnectionCause.LeftRoom
         });
     }
 }
 
-// 
+// Get infos
+function OnGetRoomInfosRequested(socket){
+    let lobby = FindLobby(socket.version);
+    if (lobby){
+        let roomInfos = [];
+        let rooms = lobby.rooms;
+        rooms.forEach(room => {
+            let roomInfo = {};
+            roomInfo["id"] = room.id;
+            roomInfo["name"] = room.name;
+            roomInfo["playersCount"] = room.playersCount;
+            roomInfo["isLocked"] = room.isLocked;
+            roomInfo["isSessionStarted"] = room.isSessionStarted;
+            let customProperties = {};
+            if (room.customPropertyKeysForLobby.length > 0) {
+                room.customPropertyKeysForLobby.forEach(key => {
+                    customProperties[key] = room.customProperties[key];
+                });
+            }
+            roomInfo["customProperties"] = customProperties;
+            roomInfos.push({
+                roomInfo
+            });
+        });
+
+        SendJsonObjectToSocket(socket, {
+            "opResponse": OpResponse.OnRoomInfosGet,
+            "roomInfos": roomInfos
+        });
+    }
+}
+
+function OnGetPlayersCountRequested(socket){
+    let lobby = FindLobby(socket.version);
+    if (lobby){
+        SendJsonObjectToSocket(socket, {
+            "opResponse": OpResponse.OnPlayersCountGet,
+            "playerCounts": playerCounts
+        });
+    }
+}
+
 // Disconnect from master server.
 function OnDisconnectRequested(socket, jObject) {
     let lobby = FindLobby(socket.version);
