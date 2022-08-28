@@ -153,11 +153,39 @@ class Room {
 
     //#region Server control
     StartSession(){
+
+        this.ServerSocketControl();
+
         var fileName = "C:/servers/"+this.lobby.version+"/"+'server.exe -batchmode -port' + this.port;
         var dirName = path.dirname(fileName);
 
         var exec = require('child_process').exec;
         exec(fileName, {cwd :dirName});
+    }
+
+    ServerSocketControl(){
+
+        var ip = "127.0.0.1";
+        var wsServer = require('ws').Server;
+        var wss = new wsServer({ host: ip, port: this.port });
+
+        wss.on('connection', function connection(socket) {
+            console.log("Client connected");
+        
+            socket.on('message', (message) => {
+                let jObject = JSON.parse(message);
+                if (jObject.hasOwnProperty("opRequest")) {
+                    OnLobbyMessage(jObject.OpRequest, socket, jObject);
+                }
+                else if (jObject.hasOwnProperty("opRequestRoom")) {
+                    OnRoomMessage(socket, jObject);
+                }
+            });
+        
+            socket.on('close', () => {
+                OnSocketDisconnected(socket);
+            });
+        });
     }
 
     StopSession(){
