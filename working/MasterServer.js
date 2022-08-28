@@ -8,7 +8,7 @@ var port = 3333;
 var wsServer = require('ws').Server;
 var wss = new wsServer({ port: port });
 
-var lobbies = {};
+var lobbies = {};f
 
 console.log('Server opened on port %d.', port);
 
@@ -41,7 +41,7 @@ function OnLobbyMessage(opRequest, socket, jObject) {
             break;
         case OpRequest.JoinRoom:
             OnJoinRoomRequested(socket, jObject);
-            break;
+            break;df
         case OpRequest.JoinRandomRoom:
             OnJoinRandomRoomRequested(socket, jObject);
             break;

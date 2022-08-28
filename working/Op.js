@@ -66,7 +66,9 @@ const OpResponseRoom = {
     OnCustomPropertiesSet : 9,
 
     OnChatMessage : 10,
-
+    
+    OnSessionStrated : 11,
+    OnSessionStopped : 12
 }
 
 const FailureCause = {

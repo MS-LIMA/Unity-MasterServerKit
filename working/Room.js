@@ -26,6 +26,7 @@ class Room {
         // Server infos
         this.serverIp = serverIp,
         this.port = port;
+        this.exec = null;
 
         // Misc
         this.lobby = lobby;
@@ -159,7 +160,7 @@ class Room {
         var fileName = "C:/servers/"+this.lobby.version+"/"+'server.exe -batchmode -port' + this.port;
         var dirName = path.dirname(fileName);
 
-        var exec = require('child_process').exec;
+        this.exec = require('child_process').exec;
         exec(fileName, {cwd :dirName});
     }
 
@@ -170,29 +171,52 @@ class Room {
         var wss = new wsServer({ host: ip, port: this.port });
 
         wss.on('connection', function connection(socket) {
-            console.log("Client connected");
+            console.log("Room instance created!");
         
             socket.on('message', (message) => {
                 let jObject = JSON.parse(message);
-                if (jObject.hasOwnProperty("opRequest")) {
-                    OnLobbyMessage(jObject.OpRequest, socket, jObject);
-                }
-                else if (jObject.hasOwnProperty("opRequestRoom")) {
-                    OnRoomMessage(socket, jObject);
+                switch(jObject.serverOp){
+                    case ServerOp.OnServerStarted:
+                        ConnectClientsToServer();
+                    break;
+                    case ServerOp.OnServerStopped:
+                        DisconnectClientsFromServer();
+                    break;
                 }
             });
         
             socket.on('close', () => {
-                OnSocketDisconnected(socket);
+                //OnSocketDisconnected(socket);
             });
         });
     }
 
-    StopSession(){
+    ConnectClientsToServer(){
+        this.SendJsonObjectToPlayers({
+            "opResponseRoom" : OpResponseRoom.OnSessionStrated,
+            "ip" : this.ip,
+            "port" : this.port
+        });
+    }
 
+    DisconnectClientsFromServer(){
+        this.SendJsonObjectToPlayers({
+            "opResponseRoom" : OpResponseRoom.OnSessionStopped
+        });
+    }
+
+    StopSession(){
+        this.exec.kill();
+        this.DisconnectClientsFromServer();
     }
 
     //#endregion
+}
+
+const ServerOp = {
+    OnServerStarted : 1,
+    OnServerStopped : 2,
+    OnServerError : 3
 }
 
 module.exports = Room;
