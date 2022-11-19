@@ -2,7 +2,7 @@ import {Util} from '../utilities';
 const crypto = require('crypto');
 
 export class Room {
-    constructor(roomOptions, customProperties, onEmpty){
+    constructor(roomOptions, customProperties, config, onEmpty){
         // Room props
         this.id = crypto.randomUUID();
         this.name = roomOptions.roomName;
@@ -25,6 +25,12 @@ export class Room {
 
         // Callbacks
         this.onEmpty = onEmpty;
+
+        // Server instance setting
+        this.ip = config.ip;
+        this.port = config.port;
+        this.path = config.path + '/' + config.version+'';
+        this.exec = null;
     }
 
     isFull = () => {
@@ -81,6 +87,18 @@ export class Room {
             customProperties : this.customProperties
         }
     }
+
+    // Server instance
+    //////////////////////////////////////////////////////
+    startInstance = () => {
+        this.exec = require('child_process').exec;
+        this.exec(this.path + `-batchmode -port ${this.port} -ip ${this.ip}`, (err, stdout, stderr) => {});
+    }
+
+    stopInstance = () => {
+
+    }
+
 
     // Player
     //////////////////////////////////////////////////////

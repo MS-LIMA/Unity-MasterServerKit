@@ -3,14 +3,14 @@ import { Util } from '../utilities';
 import { Player } from "./Player";
 
 const ErrorCode = {
-    IsFull : 1,
-    IncorrectPassword : 2,
+    IsFull: 1,
+    IncorrectPassword: 2,
 
-    NotFound : 255
+    NotFound: 255
 }
 
 export class Lobby {
-    constructor(version, config){
+    constructor(version, config, requestPort, returnPort) {
         this.version = version;
         this.config = config;
 
@@ -18,6 +18,9 @@ export class Lobby {
         this.players = {};
 
         this.rooms = {};
+
+        this.requestPort = requestPort;
+        this.returnPort = returnPort;
     }
 
     // Player
@@ -34,7 +37,7 @@ export class Lobby {
     }
 
     removePlayer = (id) => {
-        if (id in this.players){
+        if (id in this.players) {
             delete this.players[id];
             this.playerCount--;
         }
@@ -48,17 +51,27 @@ export class Lobby {
     // Room
     ////////////////////////////////////////////
     createRoom = (creator, roomOptions, customProperties, callback) => {
-        const room = new Room(roomOptions, customProperties, this.removeEmptyRoom);
+        const room = new Room(
+            roomOptions,
+            customProperties,
+            {
+                ip: this.config.ip,
+                port: this.requestPort(),
+                path: this.config.serverInstance.path,
+                version: this.version,
+                buildName: this.config.serverInstance.buildName
+            },
+            this.removeEmptyRoom);
         room.setMaster(creator);
 
         const jObject = room.getJsonObjectForLobby(
-            RoomParams.name, 
+            RoomParams.name,
             RoomParams.isGameStart,
             RoomParams.isLocked,
             RoomParams.maxPlayerCount,
             RoomParams.playerCount,
             RoomParams.players
-        ); 
+        );
 
         this.broadcastToOnlyInLobby(jObject);
         callback(true, room);
@@ -66,26 +79,25 @@ export class Lobby {
 
     joinRoom = (joiner, roomData, callback) => {
         const room = this.rooms[roomData.id];
-        if (!room){
+        if (!room) {
             callback(ErrorCode.NotFound, null);
         }
 
-        const {success, errorCode} = this.#canJoinRoom(roomData);
-        if (success){
+        const { success, errorCode } = this.#canJoinRoom(roomData);
+        if (success) {
             this.#joinRoom(joiner, room, callback);
         }
-        else{
+        else {
             callback(errorCode, null);
         }
     }
 
     joinRandomRoom = (joiner, callback) => {
-        let rooms = Object.values(this.rooms).filter(x=>!x.IsFull() && !x.isLocked());
+        let rooms = Object.values(this.rooms).filter(x => !x.IsFull() && !x.isLocked());
         rooms = rooms.sort(() => 0.5 - Math.random());
 
         rooms.forEach(room => {
-            if (this.#canJoinRoom(room, roomData))
-            {
+            if (this.#canJoinRoom(room, roomData)) {
                 this.#joinRoom(joiner, room, callback);
                 return;
             }
@@ -95,17 +107,17 @@ export class Lobby {
     }
 
     #canJoinRoom = (room, roomData) => {
-        if (room.isFull()){
+        if (room.isFull()) {
             return [false, RoomParams.IsFull];
         }
 
-        if (room.isLocked()){
-            if (!roomData){
+        if (room.isLocked()) {
+            if (!roomData) {
                 return [false, RoomParams.IncorrectPassword];
             }
 
-            return [roomData.password === room.password, 
-                roomData.password === room.password ? null : RoomParams.IncorrectPassword
+            return [roomData.password === room.password,
+            roomData.password === room.password ? null : RoomParams.IncorrectPassword
             ];
         }
 
@@ -122,7 +134,7 @@ export class Lobby {
 
     leaveRoom = (leaver, cause, callback) => {
         const room = this.rooms[leaver.roomId];
-        if (room){
+        if (room) {
             room.removePlayer(leaver, cause);
             if (room.playerCount > 0) {
                 this.broadcastToOnlyInLobby(room.getJsonObject(RoomParams.playerCount));
@@ -135,15 +147,17 @@ export class Lobby {
     removeEmptyRoom = (room) => {
         delete this.rooms[room.id];
         this.broadcastToOnlyInLobby({
-            Op : RoomOp.OnRemoved,
-            roomId : room.id
+            Op: RoomOp.OnRemoved,
+            roomId: room.id
         });
+
+        this.returnPort(room.port);
     }
 
     // Broadcast
     /////////////////////////////////////////
     broadcastToOnlyInLobby = (object) => {
-        const sockets = this.players.filter(x=>x.roomId).map(x=>x.socket);
+        const sockets = this.players.filter(x => x.roomId).map(x => x.socket);
         Util.sendJsonObjectToSockets(sockets, object);
     }
 

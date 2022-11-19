@@ -1,12 +1,17 @@
-import { DisconnectionCause, Lobby, OpRequest, OpResponse, RoomParams } from "./classes";
+import { DisconnectionCause, Lobby, OpRequest, OpResponse } from "./classes";
 import { Util } from './utilities';
 
 var lobbies = {};
 var config = {};
 
+this.ports = [];
+
 ////////////////////////////////////////////////
 const init = (_config) => {
     config = _config;
+    for(let i = 0;i<config.serverInstance.maxInstanceCount;i++){
+        this.ports.push(i + config.serverInstance.portStart);
+    }
 }
 
 ////////////////////////////////////////////////
@@ -174,17 +179,61 @@ const removeplayer = (socket) => {
     lobby.removeplayer(socket);
 }
 
+
+// Lobby utils
 const createOrFindLobby = (version) => {
     if (version in lobbies) {
         return lobbies[version];
     }
 
-    return new Lobby(version, config);
+    return new Lobby(version, config, requestPort, returnPort);
+}
+
+const requestPort = () => {
+    if (this.ports.length <= 0){
+        console.log("MAX SERVER INSTANCE COUNT LIMIT");
+        return;
+    }
+
+    const port = this.ports.pop();
+    return port;
+}
+
+const returnPort = (port) => {
+    this.ports.push(port);
 }
 
 // Room
 ////////////////////////////////////////////////
+const startInstance = () => {
 
+}
+
+const stopInstance = () => {
+
+}
+
+const setMaster = () => {
+
+}
+
+const kickPlayer = () => {
+
+}
+
+const setRoomCustomProperties = () => {
+
+}
+
+// Player
+////////////////////////////////////////////////
+const setNickname = () => {
+
+}
+
+const setPlayerCustomProperties = () => {
+
+}
 
 ////////////////////////////////////////////////
 module.exports = {
