@@ -1,8 +1,8 @@
-export const SendJSONObjectToSocket = (socket, obj, replacer = null) => {
+export const sendJSONObjectToSocket = (socket, obj, replacer = null) => {
     socket.send(JSON.stringify(obj, replacer ? replacer : JSONReplacer));
 }
 
-export const SendJSONObjectToSockets = (sockets, obj, replacer = null) => {
+export const sendJSONObjectToSockets = (sockets, obj, replacer = null) => {
     sockets.forEach(socket => {
         socket.send(JSON.stringify(obj, replacer ? replacer : JSONReplacer));
     });

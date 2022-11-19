@@ -27,15 +27,15 @@ export class Room {
         this.onEmpty = onEmpty;
     }
 
-    IsFull = () => {
+    isFull = () => {
         return this.playerCount >= this.maxPlayerCount;
     }
 
-    IsLocked = () => {
+    isLocked = () => {
         return this.password ? true : false;
     }
 
-    GetJsonObject = (...args) => {
+    getJsonObjectForLobby = (...args) => {
         let jObject = {
             id : this.id
         }
@@ -53,7 +53,7 @@ export class Room {
             jObject.maxPlayerCount = this.maxPlayerCount;
         }
         if (RoomParams.isLocked in args){
-            jObject.isLocked = this.IsLocked();
+            jObject.isLocked = this.isLocked();
         }
         if (RoomParams.customProperties in args){
             let customProperties = [];
@@ -68,48 +68,61 @@ export class Room {
         return jObject;
     }
 
+    getJsonObjectForRoom = () => {
+        return {
+            id : this.id,
+            name : this.name,
+
+            isGameStart : this.isGameStart,
+            masterId : this.masterId,
+            playerCount : this.playerCount,
+            players : this.players,
+            maxPlayerCount : this.maxPlayerCount,
+            customProperties : this.customProperties
+        }
+    }
+
     // Player
     //////////////////////////////////////////////////////
-    SetMaster = (master) => {
+    setMaster = (master) => {
         this.masterId = master.id;
 
         if (this.playerCount <= 0){
             this.players[master.id] = master;
             this.playerCount++;
-            this.BroadcastToPlayers({
+            this.broadcastToPlayers({
                 roomOpInternal : RoomOpInternal.OnPlayerJoined,
                 player : master
             });
         }
 
-        this.BroadcastToPlayers({
+        this.broadcastToPlayers({
             roomOpInternal : RoomOpInternal.OnMasterChanged,
             masterId : this.masterId
         });
-        // Broadcast master;;;;
     }
 
-    AddPlayer = (player) => {    
+    addPlayer = (player) => {    
         this.players[player] = player;
         this.playerCount++;
 
-        this.BroadcastToPlayers({
+        this.broadcastToPlayers({
             roomOpInternal : RoomOpInternal.OnPlayerJoined,
             player : player
         });
 
         if (this.playerCount <= 1){
-            this.SetMaster(player);
+            this.setMaster(player);
         }
     }
 
-    RemovePlayer = (player, reason) => {
+    removePlayer = (player, reason) => {
         if (player.id in this.players){
             delete this.players[player.id];
             this.playerCount--;
         }
 
-        this.BroadcastToPlayers({
+        this.broadcastToPlayers({
             roomOpInternal : RoomOpInternal.OnPlayerLeft,
             playerId : player.id,
             reason : reason
@@ -120,24 +133,24 @@ export class Room {
         }
         else{
             if (masterId === player.id){
-                this.SetMaster((Object.values(this.players))[0]);
+                this.setMaster((Object.values(this.players))[0]);
             }
         }
     }
 
-    KickPlayer = (player) => {
+    kickPlayer = (player) => {
         if (player.id === this.masterId){
             return;
         }
 
-        this.RemovePlayer(player, 'kick');
+        this.removePlayer(player, 'kick');
     }
 
     // Broadcast
     ///////////////////////////////////////////////////
-    BroadcastToPlayers = (object) => {
+    broadcastToPlayers = (object) => {
         const sockets = this.players.map(x=>x.socket);
-        Util.SendJSONObjectToSockets(sockets, object);
+        Util.sendJSONObjectToSockets(sockets, object);
     }
 }
 
