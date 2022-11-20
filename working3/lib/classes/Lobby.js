@@ -23,6 +23,7 @@ export class Lobby {
         this.requestPort = requestPort;
         this.returnPort = returnPort;
     }
+    
 
     // Player
     /////////////////////////////////////////////
@@ -74,6 +75,7 @@ export class Lobby {
             }
         }
     }
+
 
     // Room
     ////////////////////////////////////////////
@@ -205,6 +207,21 @@ export class Lobby {
         this.returnPort(room.port);
     }
 
+    listRoomInfos = () => {
+        let arr = [];
+        this.rooms.forEach(x => {
+            arr.push(x.getRoomInfoForLobby(
+                RoomParams.name,
+                RoomParams.isGameStart,
+                RoomParams.isLocked,
+                RoomParams.maxPlayerCount,
+                RoomParams.playerCount,
+                RoomParams.players
+            ));
+        })
+
+        return arr;
+    }
 
     // Room internal
     //////////////////////////////////////////
@@ -264,6 +281,41 @@ export class Lobby {
             });
         });
     }
+
+    setGameStart = (roomId, bool) => {
+        const room = this.rooms[roomId];
+        if (!room){
+            return;
+        }
+
+        room.setGameStart(bool);
+        this.broadcastToOnlyInLobby({
+            opResponse : OpResponse.onRoomInfoChanged,
+            roomOp : OpResponse.onGameStart,
+            data : {
+                bool : bool
+            }
+        });
+    }
+
+    startServerInstance = (roomId) => {
+        const room = this.rooms[roomId];
+        if (!room){
+            return;
+        }
+
+        room.startServerInstance();
+    }
+
+    stopServerInstance = (roomId) => {
+        const room = this.rooms[roomId];
+        if (!room){
+            return;
+        }
+
+        room.stopServerInstance();
+    }
+
 
     // Broadcast
     /////////////////////////////////////////

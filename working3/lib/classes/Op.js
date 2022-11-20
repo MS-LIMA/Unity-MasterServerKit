@@ -7,11 +7,21 @@ export const OpRequest = {
     joinRoom : 3,
     joinRandomRoom : 4,
     leaveRoom : 5,
+    listRoomInfos : 6,
+    getPlayerCount : 7,
 
     // Room
     setMaster : 10,
     kickPlayer : 11,
     setRoomCustomProperties : 12,
+    setGameStart : 13,
+
+    startInstance : 14,
+    stopInstance : 15,
+
+    // Player
+    setNickname : 20,
+    setPlayerCustomProperties : 21,
 
     // Misc
 }
@@ -31,6 +41,8 @@ export const OpResponse = {
     onNicknameChanged : 100,
 
     onRoomInfoChanged : 200,
+    onRoomInfoslisted : 201,
+    onPlayerCountGathered : 202,
 }
 
 export const DisconnectionCause = {
@@ -56,6 +68,9 @@ export const RoomOpInternal = {
     onCustomPropertiesUpdated : 4,
     onPasswordChanged : 5,
     onPlayerCustomPropertiesUpdated : 6,
+    onServerInstanceActive : 7,
+    onServerInstanceInActive : 8,
+    onGameStart : 9,
 }
 
 export const RoomOp = {
@@ -64,4 +79,10 @@ export const RoomOp = {
     onPlayerCountChanged : 3,
     onCustomPropertiesUpdated : 4,
     onPasswordChanged : 5,
+    onGameStart : 6,
+}
+
+export const ServerInstanceOp = {
+    active : 1,
+    inActive : 2
 }

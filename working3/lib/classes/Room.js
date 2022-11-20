@@ -1,5 +1,5 @@
 import { Util } from '../utilities';
-import { RoomOp, RoomOpInternal } from './Op';
+import { RoomOp, RoomOpInternal, ServerInstanceOp } from './Op';
 const crypto = require('crypto');
 
 export class Room {
@@ -32,6 +32,8 @@ export class Room {
         this.port = config.port;
         this.path = config.path + '/' + config.version + '';
         this.exec = null;
+
+        this.initSocket();
     }
 
     isFull = () => {
@@ -85,7 +87,11 @@ export class Room {
             playerCount: this.playerCount,
             players: this.players,
             maxPlayerCount: this.maxPlayerCount,
-            customProperties: this.customProperties
+            customProperties: this.customProperties,
+
+            isServerInstanceActive : this.isServerInstanceActive,
+            ip: this.ip,
+            port : this.port
         }
     }
 
@@ -116,15 +122,67 @@ export class Room {
         callback();
     }
 
-    // Server instance
-    //////////////////////////////////////////////////////
-    startInstance = () => {
-        this.exec = require('child_process').exec;
-        this.exec(this.path + `-batchmode -port ${this.port} -ip ${this.ip}`, (err, stdout, stderr) => { });
+    setGameStart = (bool) => {
+        this.isGameStart = bool;
+        this.broadcastToPlayers({
+            roomOpInternal : RoomOpInternal.onGameStart,
+            isStart : bool
+        });
     }
 
-    stopInstance = () => {
 
+    // Server instance
+    //////////////////////////////////////////////////////
+    initSocket = () => {
+        var wsServer = require('ws').Server;
+        var wss = new wsServer({ port: this.port });
+    
+        console.log('Server Instance opened on port %d.', this.port);
+    
+        wss.on('connection', function connection(socket) {    
+            console.log("Server Instance connected");        
+            socket.on('message', (message) => {
+                const jObject = JSON.parse(message);
+                if (jObject.serverInstanceOp === ServerInstanceOp.active){
+                    onServerInstanceActive();
+                }
+                else{
+                    onServerInstanceInActive();
+                }
+            });      
+            socket.on('close', () => {
+                onServerInstanceInActive();
+            });
+        }); 
+    }
+
+    startServerInstance = () => {
+        this.exec = require('child_process').exec;
+        this.exec(this.path + `-batchmode -port ${this.port} -ip ${this.ip}`, (err, stdout, stderr) => { });
+
+        this.exec.on('close', this.onServerInstanceInActive);
+    }
+
+    stopServerInstance = () => {
+        this.exec.kill();
+    }
+
+    onServerInstanceActive = () => {
+        this.isServerInstanceActive = true;
+
+        this.broadcastToPlayers({
+        roomOpInternal : RoomOpInternal.onServerInstanceActive,
+        ip : this.ip,
+        port : this.port
+        });
+    }
+
+    onServerInstanceInActive = (code = '') => {
+        this.isServerInstanceActive = false;
+
+        this.broadcastToPlayers({
+            roomOpInternal : RoomOpInternal.onServerInstanceInActive,
+        });
     }
 
 
@@ -218,11 +276,16 @@ export class Room {
         });
     }
 
+
     // Broadcast
     ///////////////////////////////////////////////////
     broadcastToPlayers = (object) => {
         const sockets = this.players.map(x => x.socket);
         Util.sendJSONObjectToSockets(sockets, object);
+    }
+
+    broadcastToPlayer = (player, object) => {
+        Util.sendJSONObjectToSocket(player.socket, object);
     }
 }
 
