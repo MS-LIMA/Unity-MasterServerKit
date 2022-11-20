@@ -33,6 +33,15 @@ const onSocketMessage = (socket, message) => {
         case OpRequest.leaveRoom:
             leaveRoom(socket);
             break;
+        case OpRequest.setMaster:
+            setMaster(socket, json);
+            break;
+        case OpRequest.kickPlayer:
+            kickPlayer(socket, json);
+            break;
+        case OpRequest.setRoomCustomProperties:
+            setRoomCustomProperties(socket, json);
+            break;
     }
 }
 
@@ -64,17 +73,8 @@ const connectToMaster = (socket, message) => {
 }
 
 const createRoom = (socket, message) => {
-    const lobby = createOrFindLobby(socket.version);
-    const player = lobby.findPlayer(socket.id);
-
-    if (!player) {
-        Util.sendJsonObjectToSocket(socket, {
-            opResponse: onCreateRoomFailed,
-            ErrorCode: ''
-        });
-        return;
-    }
-
+    const {player, lobby} = findPlayerInLobby(socket, OpResponse.onCreateRoomFailed);
+    if (player){
     lobby.createRoom(player,
         message.data.roomOptions,
         message.data.customProperties,
@@ -93,20 +93,13 @@ const createRoom = (socket, message) => {
                 });
             }
         });
+    }
 }
 
 const joinRoom = (socket, message) => {
-    const lobby = createOrFindLobby(socket.version);
-    const player = lobby.findPlayer(socket.id);
+    const {player ,lobby} = findPlayerInLobby(socket, OpResponse.onJoinRoomFailed);
 
-    if (!player) {
-        Util.sendJsonObjectToSocket(socket, {
-            opResponse: OpResponse.onJoinRoomFailed,
-            ErrorCode: ''
-        });
-        return;
-    }
-
+    if (player){
     lobby.joinRoom(player, message.data, (err, room) => {
         if (err) {
             Util.sendJsonObjectToSocket(socket, {
@@ -122,19 +115,11 @@ const joinRoom = (socket, message) => {
         });
     });
 }
+}
 
 const joinRandomRoom = (socket) => {
-    const lobby = createOrFindLobby(socket.version);
-    const player = lobby.findPlayer(socket.id);
-
-    if (!player) {
-        Util.sendJsonObjectToSocket(socket, {
-            opResponse: OpResponse.onJoinRandomRoomFailed,
-            errorCode: ''
-        });
-        return;
-    }
-
+    const {player, lobby} = findPlayerInLobby(socket, OpResponse.onJoinRandomRoomFailed);
+    if (player){
     lobby.joinRandomRoom(player, (err, room) => {
         if (err) {
             Util.sendJsonObjectToSocket(socket, {
@@ -148,7 +133,8 @@ const joinRandomRoom = (socket) => {
             opResponse: OpResponse.onJoinedRandomRoom,
             room: room.getJsonObjectForRoom()
         });
-    })
+    });
+}
 }
 
 const leaveRoom = (socket) => {
@@ -189,6 +175,21 @@ const createOrFindLobby = (version) => {
     return new Lobby(version, config, requestPort, returnPort);
 }
 
+const findPlayerInLobby = (socket, opResponseFailure, errorCode = '') => {
+    const lobby = createOrFindLobby(socket.version);
+    const player = lobby.findPlayer(socket.id);
+
+    if (!player) {
+        Util.sendJsonObjectToSocket(socket, {
+            opResponse: opResponseFailure,
+            errorCode: errorCode
+        });
+        return [null, null];
+    }
+
+    return [player, lobby];
+}
+
 const requestPort = () => {
     if (this.ports.length <= 0){
         console.log("MAX SERVER INSTANCE COUNT LIMIT");
@@ -213,26 +214,68 @@ const stopInstance = () => {
 
 }
 
-const setMaster = () => {
+const setMaster = (socket, message) => {
+    const lobby = createOrFindLobby(socket.version);
+    const player = lobby.findPlayer(socket.id);
+    
+    if (!player){
+        return;
+    }
 
+    lobby.setMaster(message.data.roomId, message.data.requesterId, message.data.targetId);
 }
 
-const kickPlayer = () => {
+const kickPlayer = (socket, message) => {
+    const lobby = createOrFindLobby(socket.version);
+    const player = lobby.findPlayer(socket.id);
+    
+    if (!player){
+        return;
+    }
 
+    lobby.kickPlayer(message.data.roomId, message.data.requesterId, message.data.playerId);
 }
 
-const setRoomCustomProperties = () => {
+const setRoomCustomProperties = (socket, message) => {
+    const lobby = createOrFindLobby(socket.version);
+    const player = lobby.findPlayer(socket.id);
 
+    if (!player) {
+        return;
+    }
+
+    lobby.setRoomCustomProperties(message.data);
 }
 
 // Player
 ////////////////////////////////////////////////
-const setNickname = () => {
+const setNickname = (socket, message) => {
+    const lobby = this.lobbies[socket.version];
+    const player = lobby.findPlayer(socket.id);
 
+    if (!player){
+        return;
+    }
+
+    lobby.setNickname(player, message.data.nickname, () => {
+        Util.sendJsonObjectToSocket(socket, {
+            opResponse : OpResponse.onNicknameChanged,
+            data : {
+                nickname : message.data.nickname
+            }
+        });
+    })
 }
 
-const setPlayerCustomProperties = () => {
+const setPlayerCustomProperties = (socket, message) => {
+    const lobby = this.lobbies[socket.version];
+    const player = lobby.findPlayer(socket.id);
 
+    if (!player){
+        return;
+    }
+
+    lobby.setPlayerCustomProperties(player, message.data.customProperties);
 }
 
 ////////////////////////////////////////////////

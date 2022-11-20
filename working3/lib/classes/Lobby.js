@@ -1,6 +1,7 @@
-import { Room, RoomOp, RoomParams } from "./Room";
+import { Room } from "./Room";
 import { Util } from '../utilities';
 import { Player } from "./Player";
+import { OpResponse, RoomOp, RoomParams } from "./Op";
 
 const ErrorCode = {
     IsFull: 1,
@@ -48,6 +49,32 @@ export class Lobby {
     }
 
 
+    // Player method
+    ////////////////////////////////////////////
+    setNickname = (player, nickname, callback) => {
+        player.nickname = nickname;
+        if (player.roomId){
+            const room = this.rooms[player.roomId];
+            if (room){
+                room.setPlayerCustomProperties(player, {
+                    nickname : nickname
+                });
+            }
+        }
+
+        callback();
+    }
+
+    setPlayerCustomProperties = (player, customProperties) => {
+        player.customProperties = customProperties;
+        if (player.roomId){
+            const room = this.rooms[player.roomId];
+            if (room){
+                room.setPlayerCustomProperties(player, customProperties);
+            }
+        }
+    }
+
     // Room
     ////////////////////////////////////////////
     createRoom = (creator, roomOptions, customProperties, callback) => {
@@ -61,10 +88,13 @@ export class Lobby {
                 version: this.version,
                 buildName: this.config.serverInstance.buildName
             },
-            this.removeEmptyRoom);
-        room.setMaster(creator);
+            this.removeEmptyRoom
+        );
 
-        const jObject = room.getJsonObjectForLobby(
+        room.setMaster(creator);
+        creator.roomId = room.id;
+
+        const data = room.getRoomInfoForLobby(
             RoomParams.name,
             RoomParams.isGameStart,
             RoomParams.isLocked,
@@ -72,6 +102,11 @@ export class Lobby {
             RoomParams.playerCount,
             RoomParams.players
         );
+        const jObject = {
+            opResponse: OpResponse.onRoomInfoChanged,
+            roomOp: RoomOp.onCreated,
+            roomInfo: data
+        }
 
         this.broadcastToOnlyInLobby(jObject);
         callback(true, room);
@@ -128,7 +163,14 @@ export class Lobby {
         room.addPlayer(joiner);
         callback(null, room);
 
-        const jObject = room.getJsonObjectForLobby(RoomParams.playerCount);
+        const data = room.getRoomInfoForLobby(RoomParams.playerCount);
+        const jObject = {
+            opResponse: OpResponse.onRoomInfoChanged,
+            roomOp: RoomOp.onPlayerCountChanged,
+            data: data
+        };
+
+        joiner.roomId = room.id;
         this.broadcastToOnlyInLobby(jObject);
     }
 
@@ -137,21 +179,90 @@ export class Lobby {
         if (room) {
             room.removePlayer(leaver, cause);
             if (room.playerCount > 0) {
-                this.broadcastToOnlyInLobby(room.getJsonObject(RoomParams.playerCount));
+                const data = room.getRoomInfoForLobby(RoomParams.playerCount);
+                const jObject = {
+                    opResponse: OpResponse.onRoomInfoChanged,
+                    roomOp: RoomOp.onPlayerCountChanged,
+                    data: data
+                };
             }
         }
 
+        leaver.roomId = '';
         callback(true);
     }
 
     removeEmptyRoom = (room) => {
         delete this.rooms[room.id];
         this.broadcastToOnlyInLobby({
-            Op: RoomOp.OnRemoved,
-            roomId: room.id
+            opResponse: OpResponse.onRoomInfoChanged,
+            roomOp: RoomOp.onRemoved,
+            data: {
+                roomId: room.id
+            }
         });
 
         this.returnPort(room.port);
+    }
+
+
+    // Room internal
+    //////////////////////////////////////////
+    kickPlayer = (roomId, requesterId, playerId) => {
+        const room = this.rooms[roomId];
+        if (!room) {
+            return;
+        }
+
+        const player = this.players[playerId];
+
+        if (player) {
+            player.roomId = '';
+            room.kickPlayer(requesterId, playerId);
+        }
+    }
+
+    setMaster = (roomId, requesterId, targetId) => {
+        const room = this.rooms[roomId];
+        if (!room) {
+            return;
+        }
+
+        room.setMaster(requesterId, targetId);
+    }
+
+    setRoomCustomProperties = (roomId, customProperties) => {
+        const room = this.rooms[roomId];
+        if (!room) {
+            return;
+        }
+
+        room.setCustomProperties(customProperties, () => {
+            const data = room.getRoomInfoForLobby(RoomParams.customProperties);
+            if (data) {
+                const jObject = {
+                    opResponse: OpResponse.onRoomInfoChanged,
+                    roomOp: RoomOp.onCustomPropertiesUpdated,
+                    data: data
+                };
+                this.broadcastToOnlyInLobby(jObject);
+            }
+        });
+    }
+
+    setPassword = (roomId, password) => {
+        const room = this.rooms[roomId];
+        if (!room) {
+            return;
+        }
+
+        room.setPassword(password, () => {
+            this.broadcastToOnlyInLobby({
+                opResponse: OpResponse.onRoomInfoChanged,
+                roomOp: RoomOp.onPasswordChanged,
+                data: room.getRoomInfoForLobby(RoomParams.isLocked)
+            });
+        });
     }
 
     // Broadcast
@@ -159,16 +270,6 @@ export class Lobby {
     broadcastToOnlyInLobby = (object) => {
         const sockets = this.players.filter(x => x.roomId).map(x => x.socket);
         Util.sendJsonObjectToSockets(sockets, object);
-    }
-
-    // Socket control
-    /////////////////////////////////////////
-    onSocketMessage = (socket, json) => {
-
-    }
-
-    onSocketClose = (socket) => {
-
     }
 
 }

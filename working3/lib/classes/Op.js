@@ -9,6 +9,9 @@ export const OpRequest = {
     leaveRoom : 5,
 
     // Room
+    setMaster : 10,
+    kickPlayer : 11,
+    setRoomCustomProperties : 12,
 
     // Misc
 }
@@ -23,10 +26,42 @@ export const OpResponse = {
     onJoinRoomFailed : 7,
     onJoinRandomRoomFailed : 8,
     onLeftRoom : 9,
+
+    // Player
+    onNicknameChanged : 100,
+
+    onRoomInfoChanged : 200,
 }
 
 export const DisconnectionCause = {
     leave : 1,
     kicked : 2,
     disconnectedFromMaster : 3
+}
+
+export const RoomParams = {
+    name : 1,
+    isGameStart : 2,
+    playerCount : 3,
+    players : 4,
+    maxPlayerCount : 5,
+    isLocked : 6,
+    customProperties : 7
+}
+
+export const RoomOpInternal = {
+    onMasterChanged : 1,
+    onPlayerJoined : 2,
+    onPlayerLeft : 3,
+    onCustomPropertiesUpdated : 4,
+    onPasswordChanged : 5,
+    onPlayerCustomPropertiesUpdated : 6,
+}
+
+export const RoomOp = {
+    onCreated : 1,
+    onRemoved : 2,
+    onPlayerCountChanged : 3,
+    onCustomPropertiesUpdated : 4,
+    onPasswordChanged : 5,
 }
