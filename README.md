@@ -38,6 +38,6 @@ public class MasterControl : MonoBehaviour
 ```
 
 ### 3. Building Master Server
-![](https://github.com/MS-LIMA/Unity-MasterServerKit/blob/main/Screenshots/1.png)
+<img src="https://github.com/MS-LIMA/Unity-MasterServerKit/blob/main/Screenshots/1.png  width="200" height="400"/>
 
 
