@@ -46,5 +46,5 @@ Go to the build settings and change platform to the **Dedicated Server**. Click 
 
 Start exe file. If there is a log which says `-> Master server started on "ip":"port"`, the master server has been successfully executed.
 
-<img src="https://github.com/MS-LIMA/Unity-MasterServerKit/blob/main/Screenshots/1.png"  width="500" height="300"/>
+<img src="https://github.com/MS-LIMA/Unity-MasterServerKit/blob/main/Screenshots/2.png"  width="500" height="300"/>
 
