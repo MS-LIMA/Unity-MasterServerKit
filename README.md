@@ -38,6 +38,13 @@ public class MasterControl : MonoBehaviour
 ```
 
 ### 3. Building Master Server
-<img src="https://github.com/MS-LIMA/Unity-MasterServerKit/blob/main/Screenshots/1.png"  width="200" height="400"/>
 
+Go to the build settings and change platform to the **Dedicated Server**. Click build and select the folder build files are located to.
+
+<img src="https://github.com/MS-LIMA/Unity-MasterServerKit/blob/main/Screenshots/1.png"  width="400" height="400"/>
+
+
+Start exe file. If there is a log which says `-> Master server started on "ip":"port"`, the master server has been successfully executed.
+
+<img src="https://github.com/MS-LIMA/Unity-MasterServerKit/blob/main/Screenshots/1.png"  width="500" height="300"/>
 
