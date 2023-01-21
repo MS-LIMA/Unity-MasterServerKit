@@ -10,11 +10,11 @@ All processes are executed in one machine. **Master Server Kit** will execute un
 ## II. Master Server
 #### 1. Setting
 In `MasterServerKit/Config/Resources`, there is a `MskConfig` file which has config variables inside. Some variables should be configured before build the master server.
-|  dd |  dd |
+|  Variables |  explaination |
 | ------------ | ------------ |
-|  dd |dd  |
-| dd  |  dd|
-|  dd |dd   |
+|Master Server Ip|Master server ip connect to|
+|Master Server Port|Master server port connect to|
+|Max Connections|Maximum connections to master server|
 
 
 
