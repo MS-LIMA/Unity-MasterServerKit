@@ -8,7 +8,7 @@ This archive provides simple master server which meets basic features, such as c
 All processes are executed in one machine. **Master Server Kit** will execute unity's server build instances in the same machine and orchestrates them to the network. Master server will also use unity server build which enables fast production.
 
 ## II. Master Server
-#### 1. Settings
+### 1. Settings
 In `MasterServerKit/Config/Resources`, there is a `MskConfig` file which has config variables inside. Some variables should be configured before build the master server.
 |  Variables |  explaination |
 | ------------ | ------------ |
@@ -17,7 +17,7 @@ In `MasterServerKit/Config/Resources`, there is a `MskConfig` file which has con
 |Max Connections|Maximum connections to master server|
 
 
-#### 2. Starting Master Server
+### 2. Starting Master Server
 First of all, create an empty mono script and declare `MasterServerKit.Master` above.
 
 ```csharp
@@ -37,7 +37,7 @@ public class MasterControl : MonoBehaviour
 }
 ```
 
-#### 3. Building Master Server
-
+### 3. Building Master Server
+![](https://github.com/MS-LIMA/Unity-MasterServerKit/blob/main/Screenshots/1.png)
 
 
