@@ -101,6 +101,7 @@ namespace MasterServerKit
                 {(int)OpResponse.OnConnectedToMaster, OnConnectedToMaster },
                 {(int)OpResponse.OnConnectedToLobby, OnConnectedToLobby },
                 {(int)OpResponse.OnConnectToLobbyFailed, OnConnectToLobbyFailed },
+                {(int)OpResponse.OnSpawnProcessStarted, OnSpawnProcessStarted },
                 {(int)OpResponse.OnCreatedRoom, OnCreatedRoom },
                 {(int)OpResponse.OnCreateRoomFailed, OnCreateRoomFailed },
                 {(int)OpResponse.OnJoinedRoom, OnJoinedRoom },

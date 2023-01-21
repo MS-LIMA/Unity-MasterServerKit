@@ -600,7 +600,7 @@ namespace MasterServerKit.Master
             string version = packet.ReadString();
             MskLobby.GetPlayerListInLobby(version, (playerInfos) =>
             {
-                using (Packet packet = new Packet((int)OpResponse.OnPlayerCountGet))
+                using (Packet packet = new Packet((int)OpResponse.OnPlayerListGet))
                 {
                     string json = JsonSerializer.ToJson(playerInfos);
                     packet.Write(json);
@@ -612,9 +612,9 @@ namespace MasterServerKit.Master
         private static void OnGetRoomListRequested(TCP tcp, Packet packet)
         {
             string version = packet.ReadString();
-            MskLobby.GetPlayerCountInLobby(version, (roomInfos) =>
+            MskLobby.GetRoomListInLobby(version, (roomInfos) =>
             {
-                using (Packet packet = new Packet((int)OpResponse.OnPlayerCountGet))
+                using (Packet packet = new Packet((int)OpResponse.OnRoomListGet))
                 {
                     string json = JsonSerializer.ToJson(roomInfos);
                     packet.Write(json);

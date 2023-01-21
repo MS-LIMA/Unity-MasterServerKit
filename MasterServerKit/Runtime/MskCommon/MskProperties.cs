@@ -11,6 +11,15 @@ namespace MasterServerKit
         [JsonIgnore]
         public Dictionary<string, string> Properties { get { return this.properties; } }
 
+        public MskProperties()
+        {
+            this.properties = new Dictionary<string, string>();
+        }
+
+        public MskProperties(Dictionary<string, string> properties)
+        {
+            this.properties = properties;
+        }
 
         #region Has
 

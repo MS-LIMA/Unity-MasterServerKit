@@ -33,7 +33,7 @@ namespace MasterServerKit.Master
         public string Password { get; set; }
 
         [JsonIgnore]
-        public List<string> CustomPropertyKeysForLobby { get; set; }
+        public string[] CustomPropertyKeysForLobby { get; set; }
 
         [JsonIgnore]
         public RoomInfo roomInfo;

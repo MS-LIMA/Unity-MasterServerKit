@@ -9,7 +9,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 66d5144cd625f1d42890738ff5aaf736, type: 3}
+  m_Script: {fileID: 11500000, guid: 26aa7c2e1c6061747bc05adbe2381051, type: 3}
   m_Name: MskConfig
   m_EditorClassIdentifier: 
   version: 0.0.1
@@ -20,6 +20,6 @@ MonoBehaviour:
   serverInstancePortStart: 25000
   maxInstanceCount: 100
   roomNumbersPerLobby: 100
-  serverInstancePath: C:/Users/PAUL/Desktop/TestServerInstance
-  instanceExeName: TestServerInstance.exe
+  serverInstancePath: C:\Users\PAUL\Desktop\Sever Instance
+  instanceExeName: Sever Instance.exe
   useVersionInInstancePath: 0

@@ -13,7 +13,7 @@ namespace MasterServerKit
         public string password;
 
         public MskProperties customProperties;
-        public List<string> customPropertyKeysForLobby;
+        public string[] customPropertyKeysForLobby;
 
         public RoomOptions()
         {
@@ -22,7 +22,7 @@ namespace MasterServerKit
             this.isOpen = true;
             this.password = "";
             this.customProperties = new MskProperties();
-            this.customPropertyKeysForLobby = new List<string>();
+            this.customPropertyKeysForLobby = new string[] { };
         }
 
         public void Dispose()

@@ -11,6 +11,16 @@ namespace MasterServerKit
         public string Name { get; set; }
 
         /// <summary>
+        /// Ip of current room.
+        /// </summary>
+        public string Ip { get; set; }
+        /// <summary>
+        /// Port of current room.
+        /// </summary>
+        public ushort Port { get; set; }
+
+
+        /// <summary>
         /// Is room is private?
         /// </summary>
         public bool IsPrivate { get; set; }

@@ -17,6 +17,8 @@ namespace MasterServerKit
         /// </summary>
         public static bool IsConnected { get; private set; }
 
+        private static bool isInitialized = false;
+
         /// <summary>
         /// Is connected to the lobby?
         /// </summary>
@@ -52,7 +54,7 @@ namespace MasterServerKit
         public static bool IsFirstPlayerJoined { get; private set; }
 
 
-        private static MskProperties args = new MskProperties();
+        public static MskProperties args = new MskProperties();
 
 
         // Callbacks
@@ -68,8 +70,10 @@ namespace MasterServerKit
         public static Action<MskPlayer, MskProperties> onPlayerCustomPropertiesUpdated;
 
         #region Initialize
-        private static void Initialize()
+        public static void Initialize()
         {
+            isInitialized = true;
+
             IsConnected = false;
             InLobby = false;
 
@@ -126,7 +130,10 @@ namespace MasterServerKit
         /// <param name="port"></param>
         public static void ConnectToMasterServer(string ip, ushort port)
         {
-            Initialize();
+            if (!isInitialized)
+            {
+                Initialize();
+            }
 
             MskSocket.Connect(ip, port);
 
