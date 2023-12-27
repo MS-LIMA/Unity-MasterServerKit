@@ -1,0 +1,12 @@
+{
+  "IsHostDNS": false,
+  "MasterHost": "0.0.0.0",
+  "MasterPort": 20000,
+  "MaxConnectionsToMaster": 200,
+  "DispatchRate": 15,
+  "PortStart": 25000,
+  "MaxInstanceCount": 100,
+  "UseVersionInInstancePath": true,
+  "ServerInstancePath": "/home/ubuntu/ServerInstanceLinux",
+  "InstanceFileName": "ServerInstance"
+}

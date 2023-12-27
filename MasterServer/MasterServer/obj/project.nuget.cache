@@ -1,10 +1,13 @@
 {
   "version": 2,
-  "dgSpecHash": "YoCxpQuQm3ryHxNI8N+alVfEd4RSgYL/MXMDx2RCHXooP37Wp3QLeg9LLwCBnsRNdDsXslpj1wF3PC62UDuiRw==",
+  "dgSpecHash": "3ONvPtbIgYcf25SeTOX0nZ19lzoVHWq1CO3tRzc44VsH7vpLlO2uJ+QYpXSAhJ4RowFUS9NXEe6ncQax6a3MCg==",
   "success": true,
   "projectFilePath": "D:\\My Files\\My Projects\\Unity\\AI OneCard\\MasterServer\\MasterServer\\MasterServer.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\PAUL\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512"
+    "C:\\Users\\PAUL\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512",
+    "C:\\Users\\PAUL\\.nuget\\packages\\microsoft.netcore.app.runtime.linux-x64\\6.0.12\\microsoft.netcore.app.runtime.linux-x64.6.0.12.nupkg.sha512",
+    "C:\\Users\\PAUL\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.linux-x64\\6.0.12\\microsoft.aspnetcore.app.runtime.linux-x64.6.0.12.nupkg.sha512",
+    "C:\\Users\\PAUL\\.nuget\\packages\\microsoft.netcore.app.host.linux-x64\\6.0.12\\microsoft.netcore.app.host.linux-x64.6.0.12.nupkg.sha512"
   ],
   "logs": []
 }
