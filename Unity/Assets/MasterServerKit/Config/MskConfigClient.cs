@@ -8,19 +8,44 @@ namespace Msk
     public class MskConfigClient : ScriptableObject
     {
         [Header("Server Instance Config")]
-        [SerializeField] private string m_version = "";
+        [SerializeField]
+        [Tooltip("Version of the game. Master server will distinguish users and rooms by this version." +
+            " Only the users and rooms with same version can know each others.")]
+        private string m_version = "";
+
+        /// <summary>
+        /// Version of the game. Master server will distinguish users and rooms by this version.
+        /// Only the users and rooms with same version can know each others.
+        /// </summary>
         public static string Version { get { return Instance.m_version; } }
 
+        [Space]
+        [SerializeField]
+        [Tooltip("Is the host uses dns? If true, it will be parsed to the IPv6. Otherwise, it will be treated as IPv6.")]
+        private bool m_dnsForHost = false;
+
+        /// <summary>
+        /// Is the host uses dns? If true, it will be parsed to the IPv6. Otherwise, it will be treated as IPv6.
+        /// </summary>
+        public static bool DnsForHost { get { return Instance.m_dnsForHost; } } 
+
+        [SerializeField]
+        [Tooltip("Address of the master server.")]
+        private string m_host = "127.0.0.1";
+
+        /// <summary>
+        /// Address of the master server.
+        /// </summary>
+        public static string Host { get { return Instance.m_host; } }
 
 
-        [SerializeField] private bool m_isIpDomain = false;
-        public static bool IsIpDomain { get { return Instance.m_isIpDomain; } } 
+        [SerializeField]
+        [Tooltip("Port number of the master server.")]
+        private ushort m_port = 20000;
 
-        [SerializeField] private string m_ip = "127.0.0.1";
-        public static string Ip { get { return Instance.m_ip; } }
-
-
-        [SerializeField] private ushort m_port = 20000;
+        /// <summary>
+        /// Port number of the master server.
+        /// </summary>
         public static ushort Port { get { return Instance.m_port; } }
 
 

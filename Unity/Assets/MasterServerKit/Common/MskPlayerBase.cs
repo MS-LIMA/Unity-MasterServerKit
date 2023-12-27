@@ -48,6 +48,10 @@ namespace Msk
             this.CustomProperties = new MskProperties();
         }
 
+        /// <summary>
+        /// Serialize player's properties to json.
+        /// </summary>
+        /// <returns></returns>
         public virtual string SerializeJson()
         {
             JObject j = new JObject();

@@ -1,4 +1,3 @@
-using Msk.Master;
 using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
@@ -53,6 +52,10 @@ namespace Msk
         /// </summary>
         public MskProperties CustomProperties { get; set; }
 
+        /// <summary>
+        /// Serialize room's properties to json.
+        /// </summary>
+        /// <returns></returns>
         public virtual string SerializeJson()
         {
             return "";

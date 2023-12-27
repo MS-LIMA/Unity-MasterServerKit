@@ -36,6 +36,7 @@ namespace Msk
         /// </summary>
         public static MskRoom Room { get; internal set; }
 
+       
 #if UNITY_EDITOR
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterAssembliesLoaded)]

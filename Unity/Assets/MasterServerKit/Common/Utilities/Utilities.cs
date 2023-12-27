@@ -3,33 +3,36 @@ using System.Collections.Generic;
 using UnityEngine;
 using Newtonsoft.Json;
 
-public class Utilities 
+namespace Msk
 {
-    public static string ToJson(object t)
+    public class Utilities
     {
-        return JsonConvert.SerializeObject(t);
-    }
-
-    public static T FromJson<T>(string json)
-    {
-        return JsonConvert.DeserializeObject<T>(json);
-    }
-
-    public static T[] Shuffle<T>(T[] array)
-    {
-        int random1, random2;
-        T temp;
-
-        for (int i = 0; i < array.Length; ++i)
+        public static string ToJson(object t)
         {
-            random1 = Random.Range(0, array.Length);
-            random2 = Random.Range(0, array.Length);
-
-            temp = array[random1];
-            array[random1] = array[random2];
-            array[random2] = temp;
+            return JsonConvert.SerializeObject(t);
         }
 
-        return array;
+        public static T FromJson<T>(string json)
+        {
+            return JsonConvert.DeserializeObject<T>(json);
+        }
+
+        public static T[] Shuffle<T>(T[] array)
+        {
+            int random1, random2;
+            T temp;
+
+            for (int i = 0; i < array.Length; ++i)
+            {
+                random1 = Random.Range(0, array.Length);
+                random2 = Random.Range(0, array.Length);
+
+                temp = array[random1];
+                array[random1] = array[random2];
+                array[random2] = temp;
+            }
+
+            return array;
+        }
     }
 }

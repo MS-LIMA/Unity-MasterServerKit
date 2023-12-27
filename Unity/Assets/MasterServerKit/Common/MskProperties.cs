@@ -163,6 +163,7 @@ namespace Msk
         #endregion
 
         #region Serialize
+
         public string SerializeJson()
         {
             return JsonConvert.SerializeObject(this);
